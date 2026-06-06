@@ -58,13 +58,19 @@ nandFn = Cons (Atom Nand) (Cons (Atom (Symbol 'x')) (Atom (Symbol 'x')))
 defX :: Bool -> Expr
 defX b = Cons (Atom Define) (Cons (Atom (Symbol 'x')) (Atom (Boolean b)))
 
+defNand :: Expr
+defNand = Cons (Atom Define) (Cons (Atom (Symbol 'f')) (nandFn))
+
+applyFtoX :: Expr
+applyFtoX = Cons (Atom Apply) (Cons (Atom (Symbol 'f')) (Atom (Symbol 'x')))
+
 sampleProgram :: Expr
-sampleProgram = Cons (defX True) nandFn
+sampleProgram = Cons (defX True) (Cons defNand applyFtoX)
 
 render :: Expr -> String
 render (Atom (Boolean b)) = if b then "True" else "False"
 render (Atom (Symbol s)) = [s]
-render (Atom Nand) = "and"
+render (Atom Nand) = "nand"
 render (Cons e1 e2) = "(" ++ render e1 ++ " . " ++ render e2 ++ ")"
 
 main :: IO ()
