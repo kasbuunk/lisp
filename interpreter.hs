@@ -17,6 +17,7 @@ cons = Cons
 
 nand :: Expr -> Expr -> Expr
 nand (Atom (Boolean b1)) (Atom (Boolean b2)) = Atom (Boolean (not (b1 && b2)))
+nand e1 e2 = Cons (Atom Nand) (Cons e1 e2)
 
 interpreter :: EnvStack -> Expr -> EnvStack
 interpreter envs expr = envs
@@ -42,12 +43,23 @@ deref env s = Map.findWithDefault (Atom (Symbol s)) s env
 
 substitute :: Symbol -> Expr -> Expr -> Expr
 substitute s value (Atom (Symbol replaceMe)) = if s == replaceMe then value else Atom (Symbol replaceMe)
+substitute s value (Cons e1 e2) = Cons (substitute s value e1) (substitute s value e2)
+substitute s value (Atom a) = Atom a
 
 sampleExpr :: Expr
 sampleExpr = Atom (Boolean True)
 
 sampleNand :: Expr
 sampleNand = Cons (Atom Nand) (Cons (Atom (Boolean True)) (Atom (Boolean False)))
+
+nandFn :: Expr
+nandFn = Cons (Atom Nand) (Cons (Atom (Symbol 'x')) (Atom (Symbol 'x')))
+
+defX :: Bool -> Expr
+defX b = Cons (Atom Define) (Cons (Atom (Symbol 'x')) (Atom (Boolean b)))
+
+sampleProgram :: Expr
+sampleProgram = Cons (defX True) nandFn
 
 render :: Expr -> String
 render (Atom (Boolean b)) = if b then "True" else "False"
@@ -58,5 +70,6 @@ render (Cons e1 e2) = "(" ++ render e1 ++ " . " ++ render e2 ++ ")"
 main :: IO ()
 main = do
   let env = Map.empty
-  let result = eval env sampleNand
+  -- let result = eval env sampleNand
+  let (_, result) = interpret env sampleProgram
   putStrLn (render result)
