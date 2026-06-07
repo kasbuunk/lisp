@@ -34,6 +34,7 @@ eval :: Env -> Expr -> Expr
 eval env (Atom (Boolean b)) = Atom (Boolean b)
 eval env (Atom (Symbol s)) = Map.findWithDefault (Atom (Symbol s)) s env
 eval env (Cons (Atom Nand) (Cons e1 e2)) = nand (eval env e1) (eval env e2)
+eval env (Cons (Atom Apply) (Cons e (Atom (Symbol s)))) = eval env (substitute s (deref env s) (eval env e))
 
 define :: Env -> Symbol -> Expr -> Env
 define env s e = Map.insert s e env
@@ -64,8 +65,13 @@ defNand = Cons (Atom Define) (Cons (Atom (Symbol 'f')) (nandFn))
 applyFtoX :: Expr
 applyFtoX = Cons (Atom Apply) (Cons (Atom (Symbol 'f')) (Atom (Symbol 'x')))
 
-sampleProgram :: Expr
-sampleProgram = Cons (defX True) (Cons defNand applyFtoX)
+sampleProgram :: [Expr]
+sampleProgram = [defX True, defNand, applyFtoX]
+
+execute :: Env -> [Expr] -> Expr
+execute env [] = undefined
+execute env [expr] = eval env expr
+execute env ((Cons (Atom Define) (Cons (Atom (Symbol s)) e)) : exprs) = execute (define env s e) exprs
 
 render :: Expr -> String
 render (Atom (Boolean b)) = if b then "True" else "False"
@@ -76,6 +82,5 @@ render (Cons e1 e2) = "(" ++ render e1 ++ " . " ++ render e2 ++ ")"
 main :: IO ()
 main = do
   let env = Map.empty
-  -- let result = eval env sampleNand
-  let (_, result) = interpret env sampleProgram
+  let result = execute env sampleProgram
   putStrLn (render result)
