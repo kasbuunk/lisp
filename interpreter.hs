@@ -8,7 +8,7 @@ data Atom = Boolean Bool | Nand | Symbol Symbol | Define | Apply
 
 type Env = Map.Map Symbol (Expr)
 
-type Symbol = Char
+type Symbol = String
 
 execute :: Env -> [Expr] -> Expr
 execute env [] = undefined
@@ -38,7 +38,7 @@ substitute s value (Atom a) = Atom a
 
 render :: Expr -> String
 render (Atom (Boolean b)) = if b then "True" else "False"
-render (Atom (Symbol s)) = [s]
+render (Atom (Symbol s)) = s
 render (Atom Nand) = "nand"
 render (Cons e1 e2) = "(" ++ render e1 ++ " . " ++ render e2 ++ ")"
 
@@ -49,16 +49,16 @@ sampleNand :: Expr
 sampleNand = Cons (Atom Nand) (Cons (Atom (Boolean True)) (Atom (Boolean False)))
 
 nandFn :: Expr
-nandFn = Cons (Atom Nand) (Cons (Atom (Symbol 'x')) (Atom (Symbol 'x')))
+nandFn = Cons (Atom Nand) (Cons (Atom (Symbol "x")) (Atom (Symbol "x")))
 
 defX :: Bool -> Expr
-defX b = Cons (Atom Define) (Cons (Atom (Symbol 'x')) (Atom (Boolean b)))
+defX b = Cons (Atom Define) (Cons (Atom (Symbol "x")) (Atom (Boolean b)))
 
 defNand :: Expr
-defNand = Cons (Atom Define) (Cons (Atom (Symbol 'f')) (nandFn))
+defNand = Cons (Atom Define) (Cons (Atom (Symbol "f")) (nandFn))
 
 applyFtoX :: Expr
-applyFtoX = Cons (Atom Apply) (Cons (Atom (Symbol 'f')) (Atom (Symbol 'x')))
+applyFtoX = Cons (Atom Apply) (Cons (Atom (Symbol "f")) (Atom (Symbol "x")))
 
 sampleProgram :: [Expr]
 sampleProgram = [defX True, defNand, applyFtoX]
