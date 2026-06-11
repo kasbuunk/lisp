@@ -10,25 +10,14 @@ type Env = Map.Map Symbol (Expr)
 
 type Symbol = Char
 
-type EnvStack = [Env]
-
-cons :: Expr -> Expr -> Expr
-cons = Cons
+execute :: Env -> [Expr] -> Expr
+execute env [] = undefined
+execute env [expr] = eval env expr
+execute env ((Cons (Atom Define) (Cons (Atom (Symbol s)) e)) : exprs) = execute (define env s e) exprs
 
 nand :: Expr -> Expr -> Expr
 nand (Atom (Boolean b1)) (Atom (Boolean b2)) = Atom (Boolean (not (b1 && b2)))
 nand e1 e2 = Cons (Atom Nand) (Cons e1 e2)
-
-interpreter :: EnvStack -> Expr -> EnvStack
-interpreter envs expr = envs
-
-interpret :: Env -> Expr -> (Env, Expr)
-interpret env (Atom (Boolean b)) = (env, eval env (Atom (Boolean b)))
-interpret env (Atom (Symbol s)) = (env, eval env (Atom (Symbol s)))
-interpret env (Cons (Atom Nand) (Cons e1 e2)) = (env, eval env (Cons (Atom Nand) (Cons e1 e2)))
-interpret env (Cons (Atom Define) (Cons (Atom (Symbol s)) e)) = (define env s e, e)
-interpret env (Cons (Atom Apply) (Cons (e) (Atom (Symbol s)))) = (env, substitute s (deref env s) e)
-interpret env (Cons e1 e2) = (env, cons (snd (interpret env e1)) (snd (interpret env e2)))
 
 eval :: Env -> Expr -> Expr
 eval env (Atom (Boolean b)) = Atom (Boolean b)
@@ -46,6 +35,12 @@ substitute :: Symbol -> Expr -> Expr -> Expr
 substitute s value (Atom (Symbol replaceMe)) = if s == replaceMe then value else Atom (Symbol replaceMe)
 substitute s value (Cons e1 e2) = Cons (substitute s value e1) (substitute s value e2)
 substitute s value (Atom a) = Atom a
+
+render :: Expr -> String
+render (Atom (Boolean b)) = if b then "True" else "False"
+render (Atom (Symbol s)) = [s]
+render (Atom Nand) = "nand"
+render (Cons e1 e2) = "(" ++ render e1 ++ " . " ++ render e2 ++ ")"
 
 sampleExpr :: Expr
 sampleExpr = Atom (Boolean True)
@@ -67,17 +62,6 @@ applyFtoX = Cons (Atom Apply) (Cons (Atom (Symbol 'f')) (Atom (Symbol 'x')))
 
 sampleProgram :: [Expr]
 sampleProgram = [defX True, defNand, applyFtoX]
-
-execute :: Env -> [Expr] -> Expr
-execute env [] = undefined
-execute env [expr] = eval env expr
-execute env ((Cons (Atom Define) (Cons (Atom (Symbol s)) e)) : exprs) = execute (define env s e) exprs
-
-render :: Expr -> String
-render (Atom (Boolean b)) = if b then "True" else "False"
-render (Atom (Symbol s)) = [s]
-render (Atom Nand) = "nand"
-render (Cons e1 e2) = "(" ++ render e1 ++ " . " ++ render e2 ++ ")"
 
 main :: IO ()
 main = do
