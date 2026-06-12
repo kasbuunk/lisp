@@ -4,37 +4,33 @@ import Data.Map qualified as Map
 
 data Expr = Atom Atom | Cons (Expr) (Expr)
 
-data Atom = Boolean Bool | Nand | Symbol Symbol | Define | Apply
+data Atom = Boolean Bool | Nand | Symbol String | Apply
 
-type Env = Map.Map Symbol (Expr)
+eval :: Expr -> Expr
+eval (Atom (Boolean b)) = Atom (Boolean b)
+eval (Cons (Atom Nand) (Cons b1 b2)) = nand b1 b2
+eval (Cons (Atom Apply) (Cons (Cons params body) arg)) = eval (apply params body arg)
 
-type Symbol = String
+-- apply takes a list of params, a function body and a list of arguments to apply the function to.
+-- Both the params and the args are a list, to implement currying and ergonomic multivariate function
+-- application with just one operation.
+--
+-- nil arguments means the function is not fully applied, it still has unbound params.
+apply :: Expr -> Expr -> Expr -> Expr
+apply params body (Atom (Symbol "nil")) = Cons params body
+apply (Cons head tail) body (Cons arg args) = apply tail (substitute head body arg) args
 
-execute :: Env -> [Expr] -> Expr
-execute env [] = undefined
-execute env [expr] = eval env expr
-execute env ((Cons (Atom Define) (Cons (Atom (Symbol s)) e)) : exprs) = execute (define env s e) exprs
+-- substitute takes a parameter and an argument and a value, and if they match, it replaces the body's parameter with the given value.
+substitute :: Expr -> Expr -> Expr -> Expr
+substitute (Atom (Symbol s1)) (Atom (Symbol s2)) arg = if s1 == s2 then arg else Atom (Symbol s2) -- substitute for s2's value (arg) if symbols match
+substitute param (Cons e1 e2) arg = Cons (substitute param e1 arg) (substitute param e2 arg)
+
+nil :: Expr
+nil = Atom (Symbol "nil")
 
 nand :: Expr -> Expr -> Expr
 nand (Atom (Boolean b1)) (Atom (Boolean b2)) = Atom (Boolean (not (b1 && b2)))
 nand e1 e2 = Cons (Atom Nand) (Cons e1 e2)
-
-eval :: Env -> Expr -> Expr
-eval env (Atom (Boolean b)) = Atom (Boolean b)
-eval env (Atom (Symbol s)) = Map.findWithDefault (Atom (Symbol s)) s env
-eval env (Cons (Atom Nand) (Cons e1 e2)) = nand (eval env e1) (eval env e2)
-eval env (Cons (Atom Apply) (Cons e (Atom (Symbol s)))) = eval env (substitute s (deref env s) (eval env e))
-
-define :: Env -> Symbol -> Expr -> Env
-define env s e = Map.insert s e env
-
-deref :: Env -> Symbol -> Expr
-deref env s = Map.findWithDefault (Atom (Symbol s)) s env
-
-substitute :: Symbol -> Expr -> Expr -> Expr
-substitute s value (Atom (Symbol replaceMe)) = if s == replaceMe then value else Atom (Symbol replaceMe)
-substitute s value (Cons e1 e2) = Cons (substitute s value e1) (substitute s value e2)
-substitute s value (Atom a) = Atom a
 
 render :: Expr -> String
 render (Atom (Boolean b)) = if b then "True" else "False"
@@ -42,29 +38,34 @@ render (Atom (Symbol s)) = s
 render (Atom Nand) = "nand"
 render (Cons e1 e2) = "(" ++ render e1 ++ " . " ++ render e2 ++ ")"
 
-sampleExpr :: Expr
-sampleExpr = Atom (Boolean True)
-
-sampleNand :: Expr
-sampleNand = Cons (Atom Nand) (Cons (Atom (Boolean True)) (Atom (Boolean False)))
+sampleProgram :: Expr
+sampleProgram = Cons (Cons (Atom Apply) nandFn) (Atom (Boolean True))
 
 nandFn :: Expr
-nandFn = Cons (Atom Nand) (Cons (Atom (Symbol "x")) (Atom (Symbol "x")))
+nandFn = (Cons (Atom Nand) (Cons b1 b2))
 
-defX :: Bool -> Expr
-defX b = Cons (Atom Define) (Cons (Atom (Symbol "x")) (Atom (Boolean b)))
+-- sampleNand :: Expr
+-- sampleNand = Cons (Atom Nand) (Cons (Atom (Boolean True)) (Atom (Boolean False)))
 
-defNand :: Expr
-defNand = Cons (Atom Define) (Cons (Atom (Symbol "f")) (nandFn))
+-- nandFn :: Expr
+-- nandFn = Cons (Atom Nand) (Cons (Atom (Symbol "x")) (Atom (Symbol "x")))
 
-applyFtoX :: Expr
-applyFtoX = Cons (Atom Apply) (Cons (Atom (Symbol "f")) (Atom (Symbol "x")))
+-- defX :: Bool -> Expr
+-- defX b = Cons (Atom Define) (Cons (Atom (Symbol "x")) (Atom (Boolean b)))
 
-sampleProgram :: [Expr]
-sampleProgram = [defX True, defNand, applyFtoX]
+-- defNand :: Expr
+-- defNand = Cons (Atom Define) (Cons (Atom (Symbol "f")) (nandFn))
+
+-- applyFtoX :: Expr
+-- applyFtoX = Cons (Atom Apply) (Cons (Atom (Symbol "f")) (Atom (Symbol "x")))
+
+-- sampleProgram :: [Expr]
+-- sampleProgram = [defX True, defNand, applyFtoX]
+
+-- sampleProgram :: Expr
+-- sampleProgram = Cons (Atom Apply)
 
 main :: IO ()
 main = do
-  let env = Map.empty
-  let result = execute env sampleProgram
+  let result = eval sampleNand
   putStrLn (render result)
